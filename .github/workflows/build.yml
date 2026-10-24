@@ -1,0 +1,34 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+      - uses: coq-community/docker-coq-action@v1
+        with:
+          opam_file: 'rocq-rbgs.opam'
+          custom_image: 'rocq/rocq-prover:9.2'
+          before_install: |
+            startGroup "Pin rocq-stdlib 9.2.0"
+              opam pin add -n -y rocq-stdlib 9.2.0
+            endGroup
+          before_script: |
+            startGroup "Workaround permission issue"
+              sudo chown -R 1000:1000 .
+            endGroup
+          script: |
+            startGroup "Build"
+              ./configure -nocompcert
+              make -j2
+            endGroup
+          uninstall: ''
+      - name: Revert permissions
+        if: ${{ always() }}
+        run: sudo chown -R 1001:116 .
